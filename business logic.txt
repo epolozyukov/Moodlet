@@ -1,0 +1,268 @@
+🎮 Tamagotchi-Style Calculation Rules (Classic Behavior)
+1. Core Stats (0–100 scale)
+
+Use these normalized values:
+
+Stat	Meaning	Good direction
+Hunger	fullness	lower is better
+Energy	rest level	higher is better
+Happiness	mood/play	higher is better
+Hygiene	cleanliness	higher is better
+Health	sickness level	higher is better
+
+✅ Clamp all values between 0 and 100
+
+⏱️ 2. Global Time Tick
+
+Tick interval (classic feel):
+
+Every 5 minutes real time → apply decay
+
+Game must also process offline time
+
+📉 3. Natural Decay Rules (every tick)
+
+These numbers are tuned to feel like the original pacing.
+
+Hunger
+
++4 every tick (pet gets hungrier)
+
+If sleeping → +1 instead
+
+Thresholds
+
+60 → show "hungry" icon
+
+85 → mood penalty
+
+=100 → start health decay
+
+Energy
+
+−3 every tick while awake
+
++6 every tick while sleeping
+
+Thresholds
+
+<40 → sleepy warning
+
+<20 → pet may auto-sleep
+
+=0 → forced sleep + health risk
+
+Happiness
+
+−2 every tick
+
+Additional −2 if hunger > 80
+
+Additional −2 if hygiene < 30
+
+Thresholds
+
+<40 → sad face
+
+<15 → refuses some actions
+
+Hygiene
+
+−3 every tick
+
+−6 after eating (poop event chance)
+
+Thresholds
+
+<40 → dirty warning
+
+<20 → health decay starts
+
+Health (derived decay)
+
+Health normally stable at 100.
+
+Decrease health by −4 per tick if ANY:
+
+hunger = 100
+
+hygiene < 20
+
+energy = 0
+
+sickness untreated for >30 min
+
+💤 4. Sleep Rules (IMPORTANT — classic feel)
+Auto Sleep Trigger
+
+Pet goes to sleep when:
+
+energy ≤ 15
+AND
+not currently playing
+Random Sleep Chance (classic quirk)
+
+Every tick when:
+
+energy < 30
+
+→ 20% chance to fall asleep
+
+While Sleeping
+
+Effects per tick:
+
+energy +6
+
+hunger +1
+
+happiness −0.5
+
+cannot play or eat
+
+can be woken by user
+
+Wake Up Rules
+
+Pet wakes when:
+
+energy ≥ 90
+OR
+
+user manually wakes
+
+After waking:
+
+happiness −5 (grumpy penalty)
+
+🍔 5. User Actions Effects
+Feed
+
+Meal
+
+hunger −35
+
+hygiene −8
+
+happiness +4
+
+30% chance poop event
+
+Snack
+
+hunger −15
+
+happiness +8
+
+health −3 (over-snack penalty)
+
+⚠️ If hunger < 20 and user feeds:
+
+happiness −3 (overfeeding dislike)
+
+Play
+
+Allowed only if:
+
+energy > 20
+
+not sleeping
+
+not sick
+
+Effects:
+
+happiness +20
+
+energy −10
+
+hunger +6
+
+Clean
+
+hygiene → 100
+
+happiness +3
+
+Medicine (when sick)
+
+health +25
+
+sickness flag cleared
+
+happiness −2
+
+🦠 6. Sickness Rules
+
+Pet becomes sick if ANY condition lasts ≥ 3 ticks:
+
+hunger > 90
+
+hygiene < 15
+
+energy = 0
+
+happiness < 10
+
+When sick:
+
+happiness −3 per tick
+
+health −4 per tick
+
+cannot play
+
+🎂 7. Growth / Evolution Rules (classic style)
+Stage timing
+Stage	Time
+Egg → Baby	1 hour
+Baby → Child	24 hours
+Child → Teen	48 hours
+Teen → Adult	72 hours
+Care Quality Score (important!)
+
+Track rolling average:
+
+care_score = average of:
+  hunger < 60
+  happiness > 50
+  hygiene > 50
+  sickness events
+Evolution outcomes
+
+Score ≥ 80 → best character
+
+Score 50–79 → normal
+
+Score < 50 → bad ending character
+
+💀 8. Death Conditions (classic harshness)
+
+Pet dies if:
+
+health = 0
+OR
+
+left sick for > 12 hours
+OR
+
+hunger = 100 for > 6 ticks
+OR
+
+user neglect for > 72 hours
+
+🔔 9. Attention Alert Logic
+
+Pet calls for attention when ANY:
+
+hunger > 70
+
+energy < 30
+
+hygiene < 40
+
+happiness < 40
+
+sick = true
+
+But cooldown = 10 minutes between alerts.

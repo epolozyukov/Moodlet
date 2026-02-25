@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gb-dark font-mono;
+    image-rendering: pixelated;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .shadow-pixel {
+    box-shadow: 4px 4px 0 #0f380f;
+  }
+
+  .shadow-pixel-sm {
+    box-shadow: 2px 2px 0 #0f380f;
+  }
+
+  .shadow-pixel-inset {
+    box-shadow: inset 2px 2px 0 #0f380f;
+  }
+}

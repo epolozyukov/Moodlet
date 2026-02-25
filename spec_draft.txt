@@ -1,0 +1,448 @@
+# 📄 Product Specification — AI Tamagotchi v0.1 (MVP)
+
+## 🎯 Product Vision
+
+Create a lightweight retro AI pet that users must care for (feed, clean, rest) while also chatting with it in real time. The pet's mood and responses dynamically react to its internal state.
+
+**Positioning:** Retro AI Tamagotchi that talks back.
+
+---
+
+# 🧭 MVP Goals
+
+## Primary goals
+
+* Validate user emotional engagement
+* Validate AI chat stickiness
+* Validate daily return behavior
+* Build in ≤ 2–3 weeks
+
+## Success metrics (first 30 days)
+
+* D1 retention ≥ 30%
+* Avg session ≥ 2 minutes
+* ≥ 5 chat messages per session
+* ≥ 50 test users
+
+---
+
+# 👤 Target User (initial)
+
+* Tech-curious professionals
+* AI enthusiasts
+* Internal colleagues / LinkedIn network
+* Telegram AI audience
+
+---
+
+# 🧩 Core User Experience
+
+User opens app and sees:
+
+* pixel pet
+* 4 stats bars
+* action buttons
+* chat window
+
+On first launch: user is prompted to **name their pet** (simple text input modal). Name is stored in localStorage and injected into the AI system prompt for all future interactions.
+
+**Core loop**
+
+1. Pet looks sad/hungry
+2. User feeds or chats
+3. Pet responds emotionally
+4. Stats change over time
+5. User returns later
+
+---
+
+# 🎮 Core Gameplay Mechanics
+
+## Pet Stats (MVP = 4)
+
+Each ranges **0–100**
+
+* Hunger
+* Hygiene
+* Energy
+* Mood (computed — see below)
+
+**Initial values:** Hunger, Hygiene, Energy all start at **80**. Mood is derived on first tick.
+
+---
+
+## ⏳ Decay System
+
+Client-side timer using `setInterval`.
+
+**Default decay:**
+
+* Hunger: −1 every 3 minutes
+* Hygiene: −1 every 5 minutes
+* Energy: −1 every 4 minutes
+* Mood: derived (recalculated on every tick)
+
+**Cross-session decay (critical):**
+
+On every save, store `lastUpdated: Date.now()` in localStorage alongside stat values. On app load, compute elapsed time since `lastUpdated` and apply proportional decay to each stat before rendering. This ensures the pet continues to decay while the tab is closed, so users return to a realistically changed pet state.
+
+---
+
+## 😊 Mood Calculation
+
+Mood is a **computed value**, not a stored stat. It is recalculated on every tick:
+
+```
+mood = (hunger + hygiene + energy) / 3
+```
+
+**Thresholds**
+
+* 80–100 → happy
+* 50–79 → neutral
+* 20–49 → sad
+* 0–19 → critical
+
+---
+
+## 💀 Critical State / Pet Sickness
+
+When **any single stat hits 0**, the pet enters a **sick state**.
+
+**Sick state behavior:**
+* Pet displays a distinct sick sprite/animation
+* Pet refuses to chat — shows a canned in-character message (e.g., "...I don't feel so good. Please help me first.")
+* Care action buttons remain active so the user can recover the pet
+* Sick state exits when **all stats are ≥ 30**
+
+**Stakes matter:** this mechanic gives the care loop emotional weight.
+
+---
+
+## 🔘 User Actions
+
+### Feed
+
+* Hunger +25 (capped at 100)
+
+### Clean
+
+* Hygiene +30 (capped at 100)
+
+### Sleep
+
+* Energy +40 (capped at 100)
+* Pet displays sleeping sprite; chat is disabled during sleep
+* Decay pauses for 2 minutes, then auto-resumes and pet wakes
+
+### Chat
+
+* Opens AI chat
+* Each message sent by the user: Mood recalculation still applies, but chatting counts as positive interaction
+* Mood indirect effect: since mood is derived, meaningful chat engagement encourages users to also maintain base stats
+
+---
+
+# 💬 AI Chat Requirements (MANDATORY)
+
+## Chat behavior
+
+The pet must:
+
+* respond in character
+* reference its needs and current stat values
+* address the user by the pet's relationship (default familiar tone)
+* keep responses short
+* show emotion
+* remember last 5 turns across sessions (localStorage-persisted)
+
+## Loading state
+
+While awaiting AI response:
+
+* Show blinking cursor or "..." animation in the chat window
+* Pet sprite shows thinking/idle animation
+* Send button is disabled until response arrives
+
+## Error / Fallback behavior
+
+When the AI API fails, returns an error, or exceeds the 10s timeout:
+
+* Display a canned in-character message — never expose raw error text to the user
+* Examples based on state:
+  * Low energy: "...zzz. Too tired to talk. Feed me first?"
+  * Normal: "*grumbles* My thoughts are all scrambled right now..."
+  * Critical: "...help."
+* Log the error silently for debugging
+
+---
+
+# 🧠 LLM Selection (Free-first)
+
+## Primary model
+
+**Llama 3.3 Instruct via OpenRouter (free tier)**
+
+**Why**
+
+* strong personality
+* free availability
+* OpenAI-compatible API
+* easy upgrade path
+
+## Fallback model
+
+**Qwen2.5 Instruct**
+
+Used if:
+
+* rate limits hit
+* latency issues
+
+---
+
+# 🧾 AI Prompt Architecture
+
+## System Prompt (MVP)
+
+Pet personality baseline:
+
+* cute but slightly chaotic
+* emotionally reactive
+* short responses (1–2 sentences)
+* occasionally needy
+* never breaks character
+* uses the pet's name as set by the user
+
+---
+
+## Runtime Context Injection
+
+Each chat request must include:
+
+```
+PET NAME: <name>
+PET STATE:
+- hunger: X/100
+- hygiene: X/100
+- energy: X/100
+- mood: X/100
+- last_user_action: <action>
+```
+
+---
+
+## Conversation Memory
+
+Persist the last **5 chat exchanges** (user + pet turns) in localStorage. Include them in the system prompt context on every request. Cap at 5 to control token usage. This creates a sense of relationship continuity across sessions.
+
+---
+
+## Response Constraints
+
+* max 40 words
+* conversational tone
+* no long paragraphs
+* no markdown
+* no emojis (retro feel; optional later)
+
+---
+
+# 🖥️ Technical Architecture
+
+## 🥇 Frontend (recommended)
+
+**Next.js + React**
+
+**Why**
+
+* fastest vibecoding
+* easy Vercel deploy
+* good state handling
+* large ecosystem
+
+### UI stack
+
+* Next.js (App Router)
+* Tailwind CSS
+* localStorage persistence
+* simple pixel sprite (PNG/GIF)
+
+---
+
+## 💾 State Management (MVP)
+
+Client-side only.
+
+Use:
+
+* localStorage for pet state (stats + `lastUpdated` timestamp + chat history + pet name + `firstOpenDate`)
+* `setInterval` for decay ticks
+* React state for UI
+
+**No backend in MVP.**
+
+---
+
+## 🔌 LLM Integration
+
+**Provider:** OpenRouter
+**Primary model:** llama-3.3-instruct
+**Fallback:** qwen2.5-instruct
+
+**API Security:** All LLM calls must be routed through a Next.js API route (`/api/chat`). The OpenRouter API key is stored in `.env.local` and never exposed to the client/browser.
+
+**Suggested params**
+
+* temperature: 0.8
+* max tokens: 80
+* streaming: optional
+* timeout: 10s
+
+---
+
+# 🧱 Project Structure (suggested)
+
+```
+/app
+  /api
+    /chat
+      route.ts         ← OpenRouter proxy (hides API key)
+  /components
+    PetSprite.tsx
+    StatsBars.tsx
+    ActionButtons.tsx
+    ChatWindow.tsx
+    NameModal.tsx      ← First-launch name prompt
+
+/lib
+  petEngine.ts
+  decayEngine.ts       ← includes cross-session elapsed decay
+  aiClient.ts
+
+/public
+  pet.png
+```
+
+---
+
+# 🎨 UI Requirements
+
+## Visual style
+
+* retro pixel
+* minimal colors
+* Game Boy inspired
+* simple animations optional
+
+## Main layout
+
+Top:
+
+* pet sprite
+
+Middle:
+
+* stats bars
+
+Bottom left:
+
+* action buttons
+
+Bottom right:
+
+* chat window
+
+## Typewriter effect
+
+AI chat responses must render **character-by-character at ~20ms per character**. This maintains the retro aesthetic and adds perceived personality to the pet's responses.
+
+---
+
+# 🔔 Retention Mechanics (MVP)
+
+Must include:
+
+* pet greeting on open (referencing name and current mood)
+* **streak counter** — display "Day N" on every open, calculated from `firstOpenDate` in localStorage; shown in the greeting message or as a persistent UI element
+* visible stat decline across sessions (requires cross-session decay)
+* emotional chat responses
+
+Optional stretch:
+
+* mood-based idle messages
+
+---
+
+# 📣 Distribution Plan
+
+Target: **≥ 50 test users within 2 weeks of launch**
+
+Channels:
+
+* LinkedIn post targeting AI/tech professionals — publish on launch day
+* Telegram AI community channels — share link with context
+* Internal team / colleagues
+* Direct personal outreach to 10–15 contacts for initial feedback
+
+Prepare a short description and screenshot/GIF of the pet in action for use across all channels.
+
+---
+
+# 🚀 Deployment
+
+**Hosting:** Vercel free tier
+**Domain:** vercel.app (temporary)
+
+---
+
+# 📊 Telemetry
+
+## MVP (required)
+
+**Vercel Analytics** (free, zero-setup, enabled via `@vercel/analytics` package)
+
+Tracks automatically:
+
+* page views / unique visitors
+* session data
+* basic retention signals
+
+## Future
+
+* **PostHog free tier** for deeper event tracking:
+  * chat count per session
+  * actions used
+  * stat values at churn
+
+---
+
+# 🧪 Post-MVP Expansion (NOT in scope)
+
+* Telegram Mini App
+* Voice (ElevenLabs)
+* Pet evolution
+* Cloud save
+* Push notifications
+* Multiplayer pets
+
+---
+
+# ✅ Definition of Done (MVP)
+
+User can:
+
+* name their pet on first launch
+* see pet with mood-appropriate sprite
+* see stats decay in real time and across sessions
+* perform care actions (feed, clean, sleep)
+* chat with AI pet that references name, stats, and recent history
+* return after closing tab to find pet in a changed state
+* see day streak counter
+* app deployed publicly with Vercel Analytics active
+
+---
+
+**Estimated build time:** 2–3 weeks vibecoding
+**Primary risk:** retention decay after novelty
+**Primary differentiator:** AI chat + retro emotional loop
