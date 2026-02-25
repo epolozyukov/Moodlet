@@ -7,6 +7,8 @@ const makeState = (overrides: Partial<PetState> = {}): PetState => ({
   hunger: 80,
   hygiene: 80,
   energy: 80,
+  happiness: 80,
+  health: 100,
   lastUpdated: Date.now(),
   isSleeping: false,
   sleepStartTime: null,
@@ -15,6 +17,15 @@ const makeState = (overrides: Partial<PetState> = {}): PetState => ({
   currentStreak: 1,
   chatHistory: [],
   lastUserAction: "none",
+  sicknessTicks: 0,
+  isSick: false,
+  sicknessStart: null,
+  hungerCriticalStart: null,
+  isDead: false,
+  stage: "child",
+  stageStartTime: Date.now(),
+  careScore: 80,
+  lastAlertTime: 0,
   ...overrides,
 });
 
@@ -39,14 +50,29 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("10");
   });
 
+  it("includes current happiness stat", () => {
+    const prompt = buildSystemPrompt(makeState({ happiness: 55 }), "neutral");
+    expect(prompt).toContain("55");
+  });
+
+  it("includes current health stat", () => {
+    const prompt = buildSystemPrompt(makeState({ health: 75 }), "neutral");
+    expect(prompt).toContain("75");
+  });
+
   it("includes the mood label", () => {
     const prompt = buildSystemPrompt(makeState(), "happy");
     expect(prompt).toContain("happy");
   });
 
+  it("includes the stage", () => {
+    const prompt = buildSystemPrompt(makeState({ stage: "teen" }), "neutral");
+    expect(prompt).toContain("teen");
+  });
+
   it("includes lastUserAction", () => {
-    const prompt = buildSystemPrompt(makeState({ lastUserAction: "feed" }), "neutral");
-    expect(prompt).toContain("feed");
+    const prompt = buildSystemPrompt(makeState({ lastUserAction: "meal" }), "neutral");
+    expect(prompt).toContain("meal");
   });
 
   it("instructs 40-word limit", () => {

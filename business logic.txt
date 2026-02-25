@@ -1,268 +1,260 @@
-🎮 Tamagotchi-Style Calculation Rules (Classic Behavior)
-1. Core Stats (0–100 scale)
+🎮 Moodlet — Game Logic Reference (as implemented)
+Last updated: 2026-02-25
 
-Use these normalized values:
+═══════════════════════════════════════════════════
+1. CORE STATS (0–100 scale)
+═══════════════════════════════════════════════════
 
-Stat	Meaning	Good direction
-Hunger	fullness	lower is better
-Energy	rest level	higher is better
-Happiness	mood/play	higher is better
-Hygiene	cleanliness	higher is better
-Health	sickness level	higher is better
+Stat        Meaning              Direction
+─────────── ──────────────────── ────────────────────
+Hunger      Fullness level       Higher = better (100 = full, 0 = starving)
+Hygiene     Cleanliness          Higher = better
+Energy      Rest level           Higher = better
+Happiness   Mood / wellbeing     Higher = better
+Health      Physical health      Higher = better (starts at 100)
 
-✅ Clamp all values between 0 and 100
+NOTE: Hunger is stored as "fullness" (inverted from classic Tamagotchi convention).
+      A pet at hunger=0 is starving; hunger=100 is completely full.
 
-⏱️ 2. Global Time Tick
+All values are clamped between 0 and 100 at all times.
 
-Tick interval (classic feel):
+═══════════════════════════════════════════════════
+2. TIME MODEL
+═══════════════════════════════════════════════════
 
-Every 5 minutes real time → apply decay
+The game uses continuous elapsed-time decay, not discrete ticks.
+Decay rates are expressed as "ms per 1 point of change".
+This allows accurate offline time processing on every app open.
 
-Game must also process offline time
+A UI tick fires every 10 seconds to refresh the display.
+Sickness tracking uses a 5-minute tick equivalent for the 3-tick threshold.
+Offline decay is resolved in full on each session start.
 
-📉 3. Natural Decay Rules (every tick)
+═══════════════════════════════════════════════════
+3. NATURAL DECAY RATES
+═══════════════════════════════════════════════════
 
-These numbers are tuned to feel like the original pacing.
+Awake decay (per point):
+  Hunger (fullness):  −1 per 75s    (equivalent to −4 per 5 min)
+  Energy:             −1 per 100s   (equivalent to −3 per 5 min)
+  Happiness:          −1 per 150s   (equivalent to −2 per 5 min)
+  Hygiene:            −1 per 100s   (equivalent to −3 per 5 min)
+  Health:             −1 per 75s    CONDITIONAL only (see below)
 
-Hunger
+Sleeping decay (per point):
+  Energy:             +1 per 50s    (equivalent to +6 per 5 min — gains while sleeping)
+  Hunger (fullness):  −1 per 300s   (equivalent to −1 per 5 min — still gets hungry, slowly)
+  Happiness:          −1 per 150s   (same rate as awake)
+  Hygiene:            no decay while sleeping
 
-+4 every tick (pet gets hungrier)
+Happiness extra penalties (stack on top of base decay):
+  Hunger < 20 (near starving):   extra −1 per 150s
+  Hygiene < 30 (dirty):          extra −1 per 150s
 
-If sleeping → +1 instead
+Health decay — active when ANY condition is true:
+  Hunger = 0 (starving)
+  Hygiene < 20 (very dirty)
+  Energy = 0 (collapsed)
+  isSick = true
 
-Thresholds
+When actively sick, additional decay per pass:
+  Happiness: extra −1 per ~100s (approximately −3 per 5 min)
+  Health:    extra −1 per 75s   (approximately −4 per 5 min)
 
-60 → show "hungry" icon
+═══════════════════════════════════════════════════
+4. SLEEP RULES
+═══════════════════════════════════════════════════
 
-85 → mood penalty
+Auto-sleep trigger (fires each decay pass when awake):
+  Energy ≤ 15    → forced sleep immediately
+  Energy < 30    → 20% random chance to fall asleep
 
-=100 → start health decay
+While sleeping:
+  Energy gains, hunger drops slowly, happiness drops at normal rate
+  Hygiene does not decay
+  Cannot use Meal, Snack, Play, Chat
+  "Wake Up" button replaces all other action buttons
 
-Energy
+Wake conditions:
+  Energy ≥ 90   → auto-wakes
+  User clicks "Wake Up" button → manual wake (happiness −5 grumpy penalty)
 
-−3 every tick while awake
+Cross-session sleep resolution:
+  On app open, if pet was sleeping, the engine calculates whether energy
+  would have reached 90 during the gap. If yes, it wakes the pet at the
+  correct point and applies post-sleep awake decay for the remaining time.
 
-+6 every tick while sleeping
-
-Thresholds
-
-<40 → sleepy warning
-
-<20 → pet may auto-sleep
-
-=0 → forced sleep + health risk
-
-Happiness
-
-−2 every tick
-
-Additional −2 if hunger > 80
-
-Additional −2 if hygiene < 30
-
-Thresholds
-
-<40 → sad face
-
-<15 → refuses some actions
-
-Hygiene
-
-−3 every tick
-
-−6 after eating (poop event chance)
-
-Thresholds
-
-<40 → dirty warning
-
-<20 → health decay starts
-
-Health (derived decay)
-
-Health normally stable at 100.
-
-Decrease health by −4 per tick if ANY:
-
-hunger = 100
-
-hygiene < 20
-
-energy = 0
-
-sickness untreated for >30 min
-
-💤 4. Sleep Rules (IMPORTANT — classic feel)
-Auto Sleep Trigger
-
-Pet goes to sleep when:
-
-energy ≤ 15
-AND
-not currently playing
-Random Sleep Chance (classic quirk)
-
-Every tick when:
-
-energy < 30
-
-→ 20% chance to fall asleep
-
-While Sleeping
-
-Effects per tick:
-
-energy +6
-
-hunger +1
-
-happiness −0.5
-
-cannot play or eat
-
-can be woken by user
-
-Wake Up Rules
-
-Pet wakes when:
-
-energy ≥ 90
-OR
-
-user manually wakes
-
-After waking:
-
-happiness −5 (grumpy penalty)
-
-🍔 5. User Actions Effects
-Feed
+═══════════════════════════════════════════════════
+5. USER ACTIONS
+═══════════════════════════════════════════════════
 
 Meal
-
-hunger −35
-
-hygiene −8
-
-happiness +4
-
-30% chance poop event
+  Hunger +35 (capped at 100)
+  Hygiene −8
+  Happiness +4
+  If hunger was already > 80 (very full): happiness −3 overfeeding penalty
+  Net happiness change when full: +1
 
 Snack
-
-hunger −15
-
-happiness +8
-
-health −3 (over-snack penalty)
-
-⚠️ If hunger < 20 and user feeds:
-
-happiness −3 (overfeeding dislike)
+  Hunger +15
+  Happiness +8
+  Health −3 (junk food penalty)
 
 Play
-
-Allowed only if:
-
-energy > 20
-
-not sleeping
-
-not sick
-
-Effects:
-
-happiness +20
-
-energy −10
-
-hunger +6
+  Allowed only if: energy > 20 AND not sleeping AND not sick
+  Happiness +20
+  Energy −10
+  Hunger −6 (burns energy = gets hungrier)
 
 Clean
+  Hygiene → 100 (instant full clean)
+  Happiness +3
 
-hygiene → 100
+Sleep
+  Sets isSleeping = true, starts sleep timer
+  Energy recovery via decay engine (+1 per 50s)
+  All action buttons disabled (only Wake Up shown)
 
-happiness +3
+Wake Up (manual)
+  isSleeping = false
+  Happiness −5 (grumpy penalty)
 
-Medicine (when sick)
+Medicine  (visible only when isSick = true)
+  Health +25
+  isSick = false, sicknessTicks = 0, sicknessStart = null
+  Happiness −2 (unpleasant)
 
-health +25
+═══════════════════════════════════════════════════
+6. SICKNESS RULES
+═══════════════════════════════════════════════════
 
-sickness flag cleared
+Sickness condition is active when ANY of:
+  Hunger < 10    (nearly starving; maps to classic "hunger > 90")
+  Hygiene < 15   (very dirty)
+  Energy = 0     (completely exhausted)
+  Happiness < 10 (deeply unhappy)
 
-happiness −2
+Sickness tracking:
+  Each decay pass, elapsed time is converted to 5-min tick equivalents.
+  If the condition is active: sicknessTicks += tickEquivalents
+  If sicknessTicks ≥ 3 and not already sick: isSick = true
+  If condition clears and not yet sick: sicknessTicks resets to 0
 
-🦠 6. Sickness Rules
+Once sick (isSick = true):
+  Additional happiness and health decay applied every pass
+  Play is disabled
+  sicknessTicks is NOT reset (only Medicine clears the sick state)
+  sicknessStart timestamp is recorded for death tracking
 
-Pet becomes sick if ANY condition lasts ≥ 3 ticks:
+Clearing sickness:
+  Only Medicine clears isSick. Stats recovering does not.
 
-hunger > 90
+═══════════════════════════════════════════════════
+7. GROWTH / EVOLUTION
+═══════════════════════════════════════════════════
 
-hygiene < 15
+Stage progression (time in current stage → advance):
+  Egg   → Baby   after  1 hour
+  Baby  → Child  after 24 hours
+  Child → Teen   after 48 hours
+  Teen  → Adult  after 72 hours
+  Adult → (final stage, no further advancement)
 
-energy = 0
+Stages are tracked via `stage` and `stageStartTime` fields.
+Advancement is checked every decay pass.
+Each stage uses a different AI personality voice and sprite emoji.
 
-happiness < 10
+Care Score
+  Updated every decay pass as a weighted rolling average:
+    tickScore = average of:
+      (hunger ≥ 40) ? 1 : 0       — pet is at least reasonably fed
+      (happiness > 50) ? 1 : 0
+      (hygiene > 50) ? 1 : 0
+      (!isSick) ? 1 : 0
+    careScore = (prevCareScore × 0.9) + (tickScore × 10)
 
-When sick:
+  Range: 0–100. Higher = better care.
+  Currently tracked but not yet used to gate evolution outcomes.
+  (Future: score ≥ 80 → best character, 50–79 → normal, < 50 → bad ending)
 
-happiness −3 per tick
+═══════════════════════════════════════════════════
+8. DEATH CONDITIONS
+═══════════════════════════════════════════════════
 
-health −4 per tick
+Pet dies (isDead = true) if ANY of:
+  health = 0
+  isSick AND sicknessStart > 12 hours ago
+  hunger = 0 continuously for > 30 minutes   (hungerCriticalStart tracked)
+  lastUpdated > 72 hours ago                  (user neglect)
 
-cannot play
+On death: death screen shown with stage reached and care score.
+User can "Start Over" (clears localStorage, triggers name modal).
 
-🎂 7. Growth / Evolution Rules (classic style)
-Stage timing
-Stage	Time
-Egg → Baby	1 hour
-Baby → Child	24 hours
-Child → Teen	48 hours
-Teen → Adult	72 hours
-Care Quality Score (important!)
+═══════════════════════════════════════════════════
+9. ATTENTION ALERTS
+═══════════════════════════════════════════════════
 
-Track rolling average:
+Alert fires when ANY threshold is crossed:
+  Hunger < 30    (pet is getting hungry)
+  Energy < 30    (getting sleepy)
+  Hygiene < 40   (getting dirty)
+  Happiness < 40 (getting sad)
+  isSick = true
 
-care_score = average of:
-  hunger < 60
-  happiness > 50
-  hygiene > 50
-  sickness events
-Evolution outcomes
+Cooldown: minimum 10 minutes between alerts.
+lastAlertTime is saved to state and persists across sessions.
 
-Score ≥ 80 → best character
+Alert effect: sprite pulses for 3 seconds in the UI.
 
-Score 50–79 → normal
+═══════════════════════════════════════════════════
+10. MOOD LABEL (for UI and AI)
+═══════════════════════════════════════════════════
 
-Score < 50 → bad ending character
+Mood is derived directly from the Happiness stat:
 
-💀 8. Death Conditions (classic harshness)
+  happiness ≥ 60  → "happy"
+  happiness ≥ 40  → "neutral"
+  happiness ≥ 15  → "sad"
+  happiness < 15  → "critical"
 
-Pet dies if:
+Used to select fallback AI messages and sprite border style.
 
-health = 0
-OR
+═══════════════════════════════════════════════════
+11. STREAK TRACKING
+═══════════════════════════════════════════════════
 
-left sick for > 12 hours
-OR
+currentStreak increments by 1 each day the app is opened.
+If a full calendar day is skipped, streak resets to 1.
+lastVisitDate is compared to yesterday's date on each load.
 
-hunger = 100 for > 6 ticks
-OR
+═══════════════════════════════════════════════════
+12. CHAT (AI)
+═══════════════════════════════════════════════════
 
-user neglect for > 72 hours
+Uses Groq API (llama-3.3-70b-versatile primary, llama3-8b-8192 fallback).
+System prompt includes: name, stage, all 5 stats, mood, isSick, lastUserAction.
+Pet AI personality adapts to stage (egg = barely conscious → adult = wry/dry).
+Responses capped at 40 words, no markdown, no emojis.
 
-🔔 9. Attention Alert Logic
+Chat history: last 10 messages (5 exchanges) stored in localStorage.
+Rate limit: max 1 request per 5 seconds per session (in-memory, server-side).
+On rate limit or API failure: in-character fallback message returned.
 
-Pet calls for attention when ANY:
+Chat is disabled when isSick or isSleeping.
 
-hunger > 70
+═══════════════════════════════════════════════════
+13. STATE PERSISTENCE
+═══════════════════════════════════════════════════
 
-energy < 30
+Full PetState is stored in localStorage as JSON (key: "moodlet_pet").
+On load, old saves missing new fields are migrated by spreading defaults.
+Session ID for rate limiting stored in localStorage (key: "moodlet_session").
 
-hygiene < 40
+═══════════════════════════════════════════════════
+14. NOT IMPLEMENTED (future backlog)
+═══════════════════════════════════════════════════
 
-happiness < 40
-
-sick = true
-
-But cooldown = 10 minutes between alerts.
+- Poop event on eating (hygiene penalty with chance mechanic)
+- Distinct evolution outcomes / ending sprites based on care score
+- Attention notifications beyond UI pulse (browser Notification API)
+- Feed sub-type UI (currently Meal and Snack are separate buttons)

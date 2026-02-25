@@ -2,6 +2,8 @@ interface StatsBarsProps {
   hunger: number;
   hygiene: number;
   energy: number;
+  happiness: number;
+  health: number;
   mood: number;
 }
 
@@ -50,12 +52,21 @@ function StatBar({ label, value, isDerived = false }: StatBarProps) {
   );
 }
 
-export default function StatsBars({ hunger, hygiene, energy, mood }: StatsBarsProps) {
+export default function StatsBars({
+  hunger,
+  hygiene,
+  energy,
+  happiness,
+  health,
+  mood,
+}: StatsBarsProps) {
   return (
     <div className="w-full">
       <StatBar label="Hunger" value={hunger} />
       <StatBar label="Hygiene" value={hygiene} />
       <StatBar label="Energy" value={energy} />
+      <StatBar label="Happiness" value={happiness} />
+      <StatBar label="Health" value={health} />
       <StatBar label="Mood" value={mood} isDerived />
     </div>
   );

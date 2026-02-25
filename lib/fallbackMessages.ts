@@ -1,8 +1,7 @@
 import type { PetState, MoodLabel } from "./types";
-import { isSick } from "./petEngine";
 
 export function getFallbackMessage(state: PetState, moodLabel: MoodLabel): string {
-  if (isSick(state)) {
+  if (state.isSick) {
     return "...help.";
   }
 
