@@ -75,9 +75,9 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("meal");
   });
 
-  it("instructs 40-word limit", () => {
+  it("instructs 120-word limit", () => {
     const prompt = buildSystemPrompt(makeState(), "neutral");
-    expect(prompt.toLowerCase()).toContain("40");
+    expect(prompt.toLowerCase()).toContain("120");
   });
 
   it("instructs no markdown", () => {
@@ -93,5 +93,20 @@ describe("buildSystemPrompt", () => {
   it("returns a non-empty string", () => {
     const prompt = buildSystemPrompt(makeState(), "neutral");
     expect(prompt.length).toBeGreaterThan(100);
+  });
+
+  it("includes low-energy fuzzy-thought block when energy < 30", () => {
+    const prompt = buildSystemPrompt(makeState({ energy: 20 }), "neutral");
+    expect(prompt.toLowerCase()).toContain("exhausted");
+  });
+
+  it("does not include low-energy block when energy is normal", () => {
+    const prompt = buildSystemPrompt(makeState({ energy: 60 }), "neutral");
+    expect(prompt.toLowerCase()).not.toContain("exhausted");
+  });
+
+  it("includes jailbreak resistance instruction", () => {
+    const prompt = buildSystemPrompt(makeState(), "neutral");
+    expect(prompt.toLowerCase()).toContain("break character");
   });
 });

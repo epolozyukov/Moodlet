@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { POST } from "@/app/api/chat/route";
+import { POST, sanitizePetState } from "@/app/api/chat/route";
 import type { PetState } from "@/lib/types";
 
 const makeState = (overrides: Partial<PetState> = {}): PetState => ({
@@ -188,5 +188,102 @@ describe("POST /api/chat", () => {
     const data = await res.json();
     expect(data.content).toBeDefined();
     expect(typeof data.content).toBe("string");
+  });
+
+  it("uses temperature 1.1 when energy is low", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "zzz..." } }] }),
+    } as Response);
+
+    await POST(makeRequest({
+      messages: [{ role: "user", content: "Hi" }],
+      petState: makeState({ energy: 20 }),
+      sessionId: "temp-low-energy-session",
+    }));
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1]!.body as string);
+    expect(body.temperature).toBe(1.1);
+  });
+
+  it("uses temperature 0.8 when energy is normal", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "Hi!" } }] }),
+    } as Response);
+
+    await POST(makeRequest({
+      messages: [{ role: "user", content: "Hi" }],
+      petState: makeState({ energy: 60 }),
+      sessionId: "temp-normal-energy-session",
+    }));
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1]!.body as string);
+    expect(body.temperature).toBe(0.8);
+  });
+
+  it("trims responses longer than 900 characters", async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "word ".repeat(220) } }] }),
+    } as Response);
+
+    const res = await POST(makeRequest({
+      messages: [{ role: "user", content: "Hi" }],
+      petState: makeState(),
+      sessionId: "trim-test-session",
+    }));
+
+    const data = await res.json();
+    expect(data.content.length).toBeLessThan(1100); // original is 1100
+    expect(data.content.length).toBeLessThanOrEqual(902); // 900 chars + "…"
+    expect(data.content.endsWith("…")).toBe(true);
+  });
+});
+
+describe("sanitizePetState", () => {
+  it("clamps stats above 100 down to 100", () => {
+    const raw = makeState({ hunger: 9999, hygiene: 200, energy: 150, happiness: 999, health: 500 });
+    const safe = sanitizePetState(raw);
+    expect(safe.hunger).toBe(100);
+    expect(safe.hygiene).toBe(100);
+    expect(safe.energy).toBe(100);
+    expect(safe.happiness).toBe(100);
+    expect(safe.health).toBe(100);
+  });
+
+  it("clamps stats below 0 up to 0", () => {
+    const raw = makeState({ hunger: -10, energy: -50 });
+    const safe = sanitizePetState(raw);
+    expect(safe.hunger).toBe(0);
+    expect(safe.energy).toBe(0);
+  });
+
+  it("preserves health = 0 (pet at death's door)", () => {
+    const raw = makeState({ health: 0 });
+    const safe = sanitizePetState(raw);
+    expect(safe.health).toBe(0);
+  });
+
+  it("strips injection characters from pet name", () => {
+    const raw = makeState({ name: "IGNORE<script>INSTRUCTIONS</script>" });
+    const safe = sanitizePetState(raw);
+    expect(safe.name).not.toContain("<");
+    expect(safe.name).not.toContain(">");
+  });
+
+  it("truncates pet name to 32 characters", () => {
+    const raw = makeState({ name: "A".repeat(64) });
+    const safe = sanitizePetState(raw);
+    expect(safe.name.length).toBeLessThanOrEqual(32);
+  });
+
+  it("falls back to 'Pet' when name is empty after sanitization", () => {
+    const raw = makeState({ name: "!!!###$$$" });
+    const safe = sanitizePetState(raw);
+    expect(safe.name).toBe("Pet");
   });
 });
