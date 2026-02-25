@@ -6,6 +6,7 @@ interface PetSpriteProps {
   isSleeping: boolean;
   stage: PetStage;
   isAlert?: boolean;
+  isActing?: boolean;
 }
 
 type PetStateKey = "happy" | "neutral" | "sad" | "critical" | "sick" | "sleeping";
@@ -43,6 +44,7 @@ export default function PetSprite({
   isSleeping,
   stage,
   isAlert = false,
+  isActing = false,
 }: PetSpriteProps) {
   const state: PetStateKey = isSick
     ? "sick"
@@ -52,6 +54,7 @@ export default function PetSprite({
 
   const emoji = STAGE_SPRITES[stage][state];
   const label = SPRITE_LABELS[state];
+  const showBounce = isActing && !isSick && !isSleeping;
 
   return (
     <div
@@ -59,7 +62,7 @@ export default function PetSprite({
       data-stage={stage}
       className={`flex items-center justify-center w-32 h-32 border-4 shadow-pixel bg-gb-light ${
         STATE_CLASSES[state]
-      } ${isAlert ? "animate-pulse" : ""}`}
+      } ${isAlert ? "animate-pulse" : ""} ${showBounce ? "animate-bounce-action" : ""}`}
       role="img"
       aria-label={label}
     >

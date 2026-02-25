@@ -26,6 +26,7 @@ export default function Home() {
   const [isAILoading, setIsAILoading] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isAlert, setIsAlert] = useState(false);
+  const [isActing, setIsActing] = useState(false);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -85,6 +86,8 @@ export default function Home() {
         savePetState(next);
         return next;
       });
+      setIsActing(true);
+      setTimeout(() => setIsActing(false), 450);
     },
     []
   );
@@ -200,6 +203,7 @@ export default function Home() {
             isSleeping={petState.isSleeping}
             stage={petState.stage}
             isAlert={isAlert}
+            isActing={isActing}
           />
         </div>
 
