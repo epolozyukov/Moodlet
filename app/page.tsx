@@ -26,7 +26,7 @@ export default function Home() {
   const [isAILoading, setIsAILoading] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isAlert, setIsAlert] = useState(false);
-  const [isActing, setIsActing] = useState(false);
+  const [actionKey, setActionKey] = useState(0);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -86,8 +86,7 @@ export default function Home() {
         savePetState(next);
         return next;
       });
-      setIsActing(true);
-      setTimeout(() => setIsActing(false), 450);
+      setActionKey((k) => k + 1);
     },
     []
   );
@@ -198,12 +197,13 @@ export default function Home() {
         {/* Pet sprite — centered */}
         <div className="flex justify-center mb-4">
           <PetSprite
+            key={actionKey}
             moodLabel={moodLabel}
             isSick={petState.isSick}
             isSleeping={petState.isSleeping}
             stage={petState.stage}
             isAlert={isAlert}
-            isActing={isActing}
+            isActing={actionKey > 0}
           />
         </div>
 

@@ -62,11 +62,13 @@ export default function PetSprite({
       data-stage={stage}
       className={`flex items-center justify-center w-32 h-32 border-4 shadow-pixel bg-gb-light ${
         STATE_CLASSES[state]
-      } ${isAlert ? "animate-pulse" : ""} ${showBounce ? "animate-bounce-action" : ""}`}
+      } ${isAlert ? "animate-pulse" : ""}`}
       role="img"
       aria-label={label}
     >
-      <span className="text-6xl select-none">{emoji}</span>
+      <span className={`text-6xl select-none ${showBounce ? "animate-bounce-action" : ""}`}>
+        {emoji}
+      </span>
     </div>
   );
 }
