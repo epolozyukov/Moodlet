@@ -12,6 +12,25 @@ interface ChatWindowProps {
 
 const TYPEWRITER_DELAY_MS = 20;
 
+function ThinkingDots() {
+  const [dots, setDots] = useState(".");
+  useEffect(() => {
+    const id = setInterval(
+      () => setDots((d) => (d.length >= 3 ? "." : d + ".")),
+      400
+    );
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <p
+      data-testid="loading-indicator"
+      className="font-mono text-xs text-gb-mid text-left select-none"
+    >
+      {dots}
+    </p>
+  );
+}
+
 function AssistantMessage({
   content,
   onUpdate,
@@ -90,9 +109,7 @@ export default function ChatWindow({
           </div>
         ))}
 
-        {isLoading && (
-          <div data-testid="loading-indicator" aria-hidden="true" />
-        )}
+        {isLoading && <ThinkingDots />}
       </div>
 
       {/* Input row */}

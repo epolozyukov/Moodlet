@@ -36,13 +36,13 @@ Offline decay is resolved in full on each session start.
 
 Awake decay (per point):
   Hunger (fullness):  −1 per 75s    (equivalent to −4 per 5 min)
-  Energy:             −1 per 100s   (equivalent to −3 per 5 min)
+  Energy:             −1 per 150s   (equivalent to −2 per 5 min)
   Happiness:          −1 per 150s   (equivalent to −2 per 5 min)
   Hygiene:            −1 per 100s   (equivalent to −3 per 5 min)
   Health:             −1 per 75s    CONDITIONAL only (see below)
 
 Sleeping decay (per point):
-  Energy:             +1 per 50s    (equivalent to +6 per 5 min — gains while sleeping)
+  Energy:             +1 per 33s    (equivalent to +9 per 5 min — gains while sleeping)
   Hunger (fullness):  −1 per 300s   (equivalent to −1 per 5 min — still gets hungry, slowly)
   Happiness:          −1 per 150s   (same rate as awake)
   Hygiene:            no decay while sleeping
@@ -67,7 +67,7 @@ When actively sick, additional decay per pass:
 
 Auto-sleep trigger (fires each decay pass when awake):
   Energy ≤ 15    → forced sleep immediately
-  Energy < 30    → 20% random chance to fall asleep
+  Energy < 20    → 20% random chance to fall asleep
 
 While sleeping:
   Energy gains, hunger drops slowly, happiness drops at normal rate
@@ -112,7 +112,7 @@ Clean
 
 Sleep
   Sets isSleeping = true, starts sleep timer
-  Energy recovery via decay engine (+1 per 50s)
+  Energy recovery via decay engine (+1 per 33s)
   All action buttons disabled (only Wake Up shown)
 
 Wake Up (manual)

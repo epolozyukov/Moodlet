@@ -39,7 +39,7 @@ function StatBar({ label, value, isDerived = false }: StatBarProps) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label}
-        className={`h-3 border-2 border-gb-dark bg-gb-light shadow-pixel-inset ${
+        className={`h-4 border-2 border-gb-dark bg-gb-light shadow-pixel-inset ${
           isDerived ? "border-dashed" : ""
         } ${isLow ? "animate-pulse" : ""}`}
       >

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { applyCrossSessionDecay, applyTickDecay, DECAY_RATES } from "@/lib/decayEngine";
+import { applyAction } from "@/lib/petEngine";
 import type { PetState } from "@/lib/types";
 
 const makeState = (overrides: Partial<PetState> = {}): PetState => ({
@@ -38,12 +39,12 @@ describe("DECAY_RATES", () => {
     expect(DECAY_RATES.hungerSleeping).toBe(300_000);
   });
 
-  it("energy decays every 100s while awake", () => {
-    expect(DECAY_RATES.energyAwake).toBe(100_000);
+  it("energy decays every 150s while awake", () => {
+    expect(DECAY_RATES.energyAwake).toBe(150_000);
   });
 
-  it("energy recovers every 50s while sleeping", () => {
-    expect(DECAY_RATES.energySleeping).toBe(50_000);
+  it("energy recovers every 33s while sleeping", () => {
+    expect(DECAY_RATES.energySleeping).toBe(33_000);
   });
 
   it("happiness decays every 150s", () => {
@@ -77,8 +78,8 @@ describe("applyTickDecay (awake)", () => {
     expect(applyTickDecay(makeState({ hygiene: 80 }), 100_000).hygiene).toBe(79);
   });
 
-  it("decays energy by 1 after exactly 100s awake", () => {
-    expect(applyTickDecay(makeState({ energy: 80 }), 100_000).energy).toBe(79);
+  it("decays energy by 1 after exactly 150s awake", () => {
+    expect(applyTickDecay(makeState({ energy: 80 }), 150_000).energy).toBe(79);
   });
 
   it("decays happiness by 1 after exactly 150s awake", () => {
@@ -96,9 +97,9 @@ describe("applyTickDecay (awake)", () => {
 });
 
 describe("applyTickDecay (sleeping)", () => {
-  it("gains energy every 50s while sleeping", () => {
-    const state = makeState({ isSleeping: true, sleepStartTime: Date.now() - 50_000, energy: 50 });
-    const result = applyTickDecay(state, 50_000);
+  it("gains energy every 33s while sleeping", () => {
+    const state = makeState({ isSleeping: true, sleepStartTime: Date.now() - 33_000, energy: 50 });
+    const result = applyTickDecay(state, 33_000);
     expect(result.energy).toBe(51);
   });
 
@@ -115,8 +116,8 @@ describe("applyTickDecay (sleeping)", () => {
   });
 
   it("does not exceed energy 100 while sleeping", () => {
-    const state = makeState({ isSleeping: true, sleepStartTime: Date.now() - 50_000, energy: 99 });
-    const result = applyTickDecay(state, 50_000);
+    const state = makeState({ isSleeping: true, sleepStartTime: Date.now() - 33_000, energy: 99 });
+    const result = applyTickDecay(state, 33_000);
     expect(result.energy).toBe(100);
   });
 });
@@ -175,6 +176,21 @@ describe("applyTickDecay - auto-sleep", () => {
     const state = makeState({ energy: 50 });
     const result = applyTickDecay(state, 10_000);
     expect(result.isSleeping).toBe(false);
+  });
+});
+
+describe("applyTickDecay - auto-wake", () => {
+  it("auto-wakes pet at energy 90 without happiness penalty", () => {
+    const state = makeState({ isSleeping: true, sleepStartTime: Date.now() - 33_000, energy: 89, happiness: 70 });
+    const result = applyTickDecay(state, 33_000);
+    expect(result.isSleeping).toBe(false);
+    expect(result.happiness).toBe(70); // no penalty on natural wake
+  });
+
+  it("manual applyAction('wake') still applies -5 happiness penalty", () => {
+    const state = makeState({ isSleeping: true, sleepStartTime: Date.now(), happiness: 70 });
+    const result = applyAction(state, "wake");
+    expect(result.happiness).toBe(65);
   });
 });
 
@@ -295,7 +311,7 @@ describe("applyCrossSessionDecay", () => {
   it("wakes pet when energy would have reached 90 during offline period", () => {
     const now = Date.now();
     vi.setSystemTime(now);
-    // Energy at 85 → needs 5 more points → 5 * 50,000ms = 250,000ms sleep
+    // Energy at 85 → needs 5 more points → 5 * 33,000ms = 165,000ms sleep
     // Set sleep start to 10 minutes ago (600,000ms) — well past wake threshold
     const sleepStartTime = now - 600_000;
     const state = makeState({

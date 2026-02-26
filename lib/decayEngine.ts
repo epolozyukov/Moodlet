@@ -5,8 +5,8 @@ import { applyAction, checkSicknessCondition } from "./petEngine";
 export const DECAY_RATES = {
   hungerAwake:    75_000,  // -4 per 5min → -1 per 75s
   hungerSleeping: 300_000, // -1 per 5min → -1 per 300s
-  energyAwake:    100_000, // -3 per 5min → -1 per 100s
-  energySleeping: 50_000,  // +6 per 5min → +1 per 50s (energy gain while sleeping)
+  energyAwake:    150_000, // -2 per 5min → -1 per 150s (matches happiness rate)
+  energySleeping: 33_000,  // +9 per 5min → +1 per 33s  (faster recovery, shorter sleep cycles)
   happiness:      150_000, // -2 per 5min → -1 per 150s
   hygiene:        100_000, // -3 per 5min → -1 per 100s
   health:         75_000,  // -4 per 5min → -1 per 75s (conditional)
@@ -140,14 +140,16 @@ function applyDecay(state: PetState, elapsedMs: number, now: number): PetState {
     if (s.energy <= 15) {
       s = applyAction(s, "sleep");
       s.happiness = Math.max(0, s.happiness); // no grumpy penalty for auto-sleep
-    } else if (s.energy < 30 && Math.random() < 0.2) {
+    } else if (s.energy < 20 && Math.random() < 0.2) {
       s = applyAction(s, "sleep");
     }
   }
 
   // Wake condition: energy has recovered enough
+  // Inline wake without calling applyAction("wake") — that carries a -5 grumpy penalty
+  // which should only fire on manual early wake, not on natural sleep completion.
   if (s.isSleeping && s.energy >= 90) {
-    s = applyAction(s, "wake");
+    s = { ...s, isSleeping: false, sleepStartTime: null };
   }
 
   // Care score update
@@ -195,7 +197,7 @@ export function applyCrossSessionDecay(state: PetState): PetState {
 
     // Apply sleep decay up to wake point, then wake, then awake decay
     const sleepingState = applyDecay(state, msToReach90, wokeAt);
-    const wokeState = applyAction(sleepingState, "wake");
+    const wokeState = { ...sleepingState, isSleeping: false, sleepStartTime: null };
     const s = applyDecay(wokeState, postSleepElapsed, now);
     return { ...s, lastUpdated: now };
   }
